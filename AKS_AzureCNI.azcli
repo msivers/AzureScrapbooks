@@ -1,0 +1,68 @@
+# Variables
+group="aks-mjs-simple"
+location="westeurope"
+cluster=$group"-cluster"
+vmsize="Standard_B2s"
+
+# // Useful pre AKS create commands?
+az aks get-versions -o table -l $location
+#sudo az aks install-cli #Install/update kubectl
+
+# =============================================================================
+# **** STAND UP AKS - MAIN ELEMENTS *******************************************
+# =============================================================================
+
+# // Create group
+az group create --name $group --location $location
+
+# // Create AKS cluster
+az aks create --resource-group $group --name $cluster --node-count 1 --generate-ssh-keys --node-vm-size $vmsize --disable-rbac
+
+# // Get access credentials for K8s cluster - required to interact with cluster using Kubectl
+az aks get-credentials --resource-group $group --name $cluster
+
+# =============================================================================
+# =============================================================================
+
+# // View K8s Dashboard
+az aks browse --resource-group $group --name $cluster
+
+# // General kubectl commands to get info...
+kubectl version
+kubectl cluster-info
+kubectl get nodes
+#kubectl describe node [NODE_NAME] # This is useful for finding out a node's available resources.
+
+# Deploy vote application
+kubectl apply -f ./azure-voting-app-redis/azure-vote-all-in-one-redis.yaml
+
+# Monitor deployment status
+kubectl get service azure-vote-front --watch
+kubectl get pods
+
+# Scale the vote app frontend (manual horizontal pod scale in/out)
+kubectl scale --replicas=5 deployment/azure-vote-front
+
+# Setup pod autoscale (Horizontal Pod Autoscaler)
+kubectl autoscale deployment azure-vote-front --cpu-percent=50 --min=1 --max=10
+kubectl get hpa # View the status of Horizontal Pod Autoscaler
+
+# Manually scale AKS nodes
+az aks scale --resource-group $group --name $cluster --node-count 3
+az aks scale --resource-group $group --name $cluster --node-count 1
+
+# Update application (have multiple replicas to demo rolling update)
+kubectl set image deployment azure-vote-front azure-vote-front=microsoft/azure-vote-front:v2
+
+# Upgrade AKS Cluster (k8s version)
+az aks get-upgrades --resource-group $group --name $cluster --output table
+az aks upgrade --resource-group $group --name $cluster --kubernetes-version 1.14.8
+az aks show --resource-group $group --name $cluster --output table
+
+
+
+
+
+
+# Delete the cluster (and resouce group)
+az group delete --name $group --yes --no-wait

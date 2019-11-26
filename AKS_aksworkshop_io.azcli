@@ -1,0 +1,112 @@
+# Azure CLI Scrapbook that follows the aksworkshop.io workshop.
+
+# Variables
+group="aks-workshop-dot-io"
+location="westeurope"
+cluster=$group"-cluster"
+version=$(az aks get-versions -l $location --query 'orchestrators[-1].orchestratorVersion' -o tsv) # Gets the latest available version of kubernetes
+
+# // Useful pre AKS create commands?
+az aks get-versions -o table -l $location
+#sudo az aks install-cli #Install/update kubectl
+
+# =============================================================================
+# **** STAND UP AKS - MAIN ELEMENTS *******************************************
+# =============================================================================
+
+# // Create group
+az group create --name $group --location $location
+
+# // Create AKS cluster (with or without autoscaler)
+az aks create --resource-group $group --name $cluster --location $location --kubernetes-version $version --generate-ssh-keys --vm-set-type VirtualMachineScaleSets --enable-cluster-autoscaler --min-count 1 --max-count 3
+az aks create --resource-group $group --name $cluster --location $location --kubernetes-version $version --generate-ssh-keys
+
+# // Get access credentials for K8s cluster - required to interact with cluster using Kubectl
+az aks get-credentials --resource-group $group --name $cluster
+
+# =============================================================================
+# =============================================================================
+
+# // View K8s Dashboard
+az aks browse --resource-group $group --name $cluster
+
+# // General kubectl commands to get info...
+kubectl get nodes
+kubectl version
+kubectl cluster-info
+#kubectl describe node [NODE_NAME] # This is useful for finding out a node's available resources.
+
+# // Initialize Helm and Tiller. This installs Tiller into the cluster
+kubectl apply -f helm/helm-rbac.yaml
+helm init --service-account tiller --history-max 200 --node-selectors "beta.kubernetes.io/os=linux"
+
+
+
+# =============================================================================
+# **** DEPLOY MONGO DB ********************************************************
+# =============================================================================
+
+# Install Mongo DB (helm chart)
+# Helm Chart - https://github.com/helm/charts/tree/master/stable/mongodb
+helm install stable/mongodb --name orders-mongo --set mongodbUsername=orders-user,mongodbPassword=orders-password,mongodbDatabase=akschallenge
+
+# Create k8s secret for mongo details
+kubectl create secret generic mongodb --from-literal=mongoHost="orders-mongo-mongodb.default.svc.cluster.local" --from-literal=mongoUser="orders-user" --from-literal=mongoPassword="orders-password"
+
+
+
+# =============================================================================
+# **** DEPLOY ORDER CAPTURE API ***********************************************
+# =============================================================================
+
+# Deploy the API
+kubectl apply -f aksworkshop_dot_io/captureorder-deployment.yaml
+
+# Verify pods are up and running
+kubectl get pods -l app=captureorder -w
+
+# Expose the deployment with a service - type: LoadBalancer
+kubectl apply -f aksworkshop_dot_io/captureorder-service.yaml
+
+# Retrieve the External-IP of the Service
+kubectl get service captureorder -o jsonpath="{.status.loadBalancer.ingress[*].ip}" -w
+
+# You can view the swagger of the API using the above resulting ip with /swagger. e.g. http://<PublicIP>/swagger
+curl -d '{"EmailAddress": "email@domain.com", "Product": "prod-1", "Total": 100}' -H "Content-Type: application/json" -X POST http://51.124.4.23/v1/order
+
+
+
+# =============================================================================
+# **** DEPLOY FRONTEND USING INGRESS ******************************************
+# =============================================================================
+
+# Deploy the frontend
+kubectl apply -f aksworkshop_dot_io/frontend-deployment.yaml
+
+# Verify that the pods are up and running
+kubectl get pods -l app=frontend -w
+
+# Expose the deployment with a service - type: ClusterIP
+kubectl apply -f aksworkshop_dot_io/frontend-service.yaml
+
+# Deploy the NGINX ingress controller with helm
+helm repo update
+helm upgrade --install ingress stable/nginx-ingress --namespace ingress
+
+# Retrieve the public ip allocated to the ingress controller
+kubectl get svc  -n ingress    ingress-nginx-ingress-controller -o jsonpath="{.status.loadBalancer.ingress[*].ip}"
+
+# Create ingress resource
+kubectl apply -f aksworkshop_dot_io/frontend-ingress.yaml
+
+# ******
+# You should now be able to view the frontend via http://frontend.[cluster_specific_dns_zone].
+# ******
+
+
+
+
+
+
+# Delete the cluster (and resouce group)
+az group delete --name $group --yes --no-wait

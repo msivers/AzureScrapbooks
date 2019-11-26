@@ -1,0 +1,46 @@
+# Variables
+group="aks-mjs-helm-demo"
+location="westeurope"
+cluster=$group"-cluster"
+vmsize="Standard_B2s"
+
+# // Useful pre AKS create commands?
+az aks get-versions -o table -l $location
+#sudo az aks install-cli #Install/update kubectl
+
+# =============================================================================
+# **** STAND UP AKS - MAIN ELEMENTS *******************************************
+# =============================================================================
+
+# // Create group
+az group create --name $group --location $location
+
+# // Create AKS cluster
+az aks create --resource-group $group --name $cluster --node-count 1 --generate-ssh-keys --node-vm-size $vmsize --disable-rbac
+
+# // Get access credentials for K8s cluster - required to interact with cluster using Kubectl
+az aks get-credentials --resource-group $group --name $cluster
+
+# =============================================================================
+# =============================================================================
+
+# // View K8s Dashboard
+az aks browse --resource-group $group --name $cluster
+
+# // General kubectl commands to get info...
+kubectl version
+kubectl cluster-info
+kubectl get nodes
+#kubectl describe node [NODE_NAME] # This is useful for finding out a node's available resources.
+
+# // Initialize Helm and Tiller. This installs Tiller into the cluster
+kubectl apply -f Helm/rbac-config.yaml
+helm init --service-account tiller --upgrade
+
+
+
+
+
+
+# Delete the cluster (and resouce group)
+az group delete --name $group --yes --no-wait
