@@ -4,6 +4,9 @@ location="westeurope"
 cluster=$group"-cluster"
 vmsize="Standard_B2s"
 
+# Add aks-preview Azure CLI extension.
+az extension add --name aks-preview
+
 # // Useful pre AKS create commands?
 az aks get-versions -o table -l $location
 #sudo az aks install-cli #Install/update kubectl
@@ -15,7 +18,7 @@ az aks get-versions -o table -l $location
 # // Create group
 az group create --name $group --location $location
 
-# // Create AKS cluster
+# // Create AKS cluster - NOTE: Uses aks-preview feature --node-resource-group
 az aks create --resource-group $group --name $cluster --node-resource-group $cluster"-nodes" --node-count 1 --generate-ssh-keys --node-vm-size $vmsize --disable-rbac
 
 # // Get access credentials for K8s cluster - required to interact with cluster using Kubectl

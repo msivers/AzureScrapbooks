@@ -6,6 +6,9 @@ location="westeurope"
 cluster=$group"-cluster"
 version=$(az aks get-versions -l $location --query 'orchestrators[-1].orchestratorVersion' -o tsv) # Gets the latest available version of kubernetes
 
+# Add aks-preview Azure CLI extension.
+az extension add --name aks-preview
+
 # // Useful pre AKS create commands?
 az aks get-versions -o table -l $location
 #sudo az aks install-cli #Install/update kubectl
@@ -17,7 +20,7 @@ az aks get-versions -o table -l $location
 # // Create group
 az group create --name $group --location $location
 
-# // Create AKS cluster (with or without autoscaler)
+# // Create AKS cluster (with or without autoscaler) - NOTE: Uses aks-preview feature --node-resource-group
 az aks create --resource-group $group --name $cluster --node-resource-group $cluster"-nodes" --location $location --kubernetes-version $version --generate-ssh-keys --vm-set-type VirtualMachineScaleSets --enable-cluster-autoscaler --min-count 1 --max-count 3
 az aks create --resource-group $group --name $cluster --node-resource-group $cluster"-nodes" --location $location --kubernetes-version $version --generate-ssh-keys
 
