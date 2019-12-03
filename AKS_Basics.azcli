@@ -1,8 +1,11 @@
 # Variables
-group="aks-mjs-simple-2"
+group="aks-mjs-simple"
 location="westeurope"
 cluster=$group"-cluster"
 vmsize="Standard_B2s"
+
+# Add aks-preview Azure CLI extension.
+az extension add --name aks-preview
 
 # // Useful pre AKS create commands?
 az aks get-versions -o table -l $location
@@ -16,7 +19,7 @@ az aks get-versions -o table -l $location
 az group create --name $group --location $location
 
 # // Create AKS cluster - NOTE: Uses aks-preview feature --node-resource-group
-az aks create --resource-group $group --name $cluster --node-resource-group $cluster"-nodes" --node-count 1 --generate-ssh-keys --node-vm-size $vmsize --disable-rbac
+az aks create --resource-group $group --name $cluster --node-resource-group $group"-nodes" --node-count 1 --generate-ssh-keys --node-vm-size $vmsize --disable-rbac
 
 # // Get access credentials for K8s cluster - required to interact with cluster using Kubectl
 az aks get-credentials --resource-group $group --name $cluster
@@ -63,6 +66,8 @@ az aks show --resource-group $group --name $cluster --output table
 
 
 
+# Delete auto-generated cluster service principle
+az ad sp delete --id $(az aks show -g $group -n $cluster --query servicePrincipalProfile.clientId -o tsv)
 
 # Delete the cluster (and resouce group)
 az group delete --name $group --yes --no-wait
