@@ -16,7 +16,7 @@ az aks get-versions -o table -l $location
 az group create --name $group --location $location
 
 # // Create AKS cluster
-az aks create --resource-group $group --name $cluster --node-count 1 --generate-ssh-keys --node-vm-size $vmsize --disable-rbac
+az aks create --resource-group $group --name $cluster --node-resource-group $cluster"-nodes" --node-count 1 --generate-ssh-keys --node-vm-size $vmsize --disable-rbac
 
 # // Get access credentials for K8s cluster - required to interact with cluster using Kubectl
 az aks get-credentials --resource-group $group --name $cluster

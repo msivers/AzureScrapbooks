@@ -18,8 +18,8 @@ az aks get-versions -o table -l $location
 az group create --name $group --location $location
 
 # // Create AKS cluster (with or without autoscaler)
-az aks create --resource-group $group --name $cluster --location $location --kubernetes-version $version --generate-ssh-keys --vm-set-type VirtualMachineScaleSets --enable-cluster-autoscaler --min-count 1 --max-count 3
-az aks create --resource-group $group --name $cluster --location $location --kubernetes-version $version --generate-ssh-keys
+az aks create --resource-group $group --name $cluster --node-resource-group $cluster"-nodes" --location $location --kubernetes-version $version --generate-ssh-keys --vm-set-type VirtualMachineScaleSets --enable-cluster-autoscaler --min-count 1 --max-count 3
+az aks create --resource-group $group --name $cluster --node-resource-group $cluster"-nodes" --location $location --kubernetes-version $version --generate-ssh-keys
 
 # // Get access credentials for K8s cluster - required to interact with cluster using Kubectl
 az aks get-credentials --resource-group $group --name $cluster
